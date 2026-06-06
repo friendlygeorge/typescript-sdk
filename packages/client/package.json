@@ -93,6 +93,14 @@
         "pkce-challenge": "catalog:runtimeShared",
         "zod": "catalog:runtimeShared"
     },
+    "peerDependencies": {
+        "@cfworker/json-schema": "catalog:runtimeShared"
+    },
+    "peerDependenciesMeta": {
+        "@cfworker/json-schema": {
+            "optional": true
+        }
+    },
     "devDependencies": {
         "@modelcontextprotocol/core": "workspace:^",
         "@modelcontextprotocol/tsconfig": "workspace:^",
