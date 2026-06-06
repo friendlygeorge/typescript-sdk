@@ -14,7 +14,7 @@ export default defineConfig({
     format: ['esm'],
     outDir: 'dist',
     clean: true,
-    sourcemap: true,
+    sourcemap: "inline",
     target: 'esnext',
     platform: 'node',
     shims: true,
