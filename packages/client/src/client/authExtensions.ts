@@ -236,8 +236,10 @@ export interface PrivateKeyJwtProviderOptions {
 
     /**
      * Optional custom claims to include in the JWT assertion.
-     * These are merged with the standard claims (`iss`, `sub`, `aud`, `exp`, `iat`, `jti`),
-     * with custom claims taking precedence for any overlapping keys.
+     * These are merged with the standard claims (`iss`, `sub`, `aud`, `exp`, `iat`, `jti`).
+     * The reserved claims are always authoritative: any overlapping keys provided here
+     * are ignored in favor of the values derived from the other options
+     * (`clientId`, `jwtLifetimeSeconds`, the resolved audience, etc.).
      *
      * Useful for including additional claims that help scope the access token
      * with finer granularity than what scopes alone allow.

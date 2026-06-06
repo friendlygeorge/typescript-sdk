@@ -467,6 +467,37 @@ describe('createPrivateKeyJwtAuth', () => {
         expect(decoded.tenant_id).toBe('org-456');
         expect(decoded.iss).toBe('client-id');
     });
+
+    it('keeps reserved claims authoritative when custom claims overlap', async () => {
+        const addClientAuth = createPrivateKeyJwtAuth({
+            issuer: 'real-issuer',
+            subject: 'real-subject',
+            privateKey: 'a-string-secret-at-least-256-bits-long',
+            alg: 'HS256',
+            audience: 'https://real-audience.example/token',
+            claims: {
+                iss: 'attacker-issuer',
+                sub: 'attacker-subject',
+                aud: 'https://attacker-audience.example/token',
+                tenant_id: 'org-789'
+            }
+        });
+
+        const params = new URLSearchParams();
+        await addClientAuth(new Headers(), params, 'https://auth.example.com/token', undefined);
+
+        const assertion = params.get('client_assertion');
+        expect(assertion).toBeTruthy();
+
+        const jose = await import('jose');
+        const decoded = jose.decodeJwt(assertion!);
+        // Reserved claims must come from the structured options, not from `claims`.
+        expect(decoded.iss).toBe('real-issuer');
+        expect(decoded.sub).toBe('real-subject');
+        expect(decoded.aud).toBe('https://real-audience.example/token');
+        // Non-reserved custom claims are still merged through.
+        expect(decoded.tenant_id).toBe('org-789');
+    });
 });
 
 describe('CrossAppAccessProvider', () => {
