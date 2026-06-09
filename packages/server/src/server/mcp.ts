@@ -1,5 +1,6 @@
 import type {
     BaseMetadata,
+    CallToolRequest,
     CallToolResult,
     CompleteRequestPrompt,
     CompleteRequestResourceTemplate,
@@ -43,6 +44,40 @@ import type { ServerOptions } from './server.js';
 import { Server } from './server.js';
 
 /**
+ * Options for {@linkcode McpServer}.
+ */
+export interface McpServerOptions extends ServerOptions {
+    /**
+     * Callback invoked when tool input schema validation fails.
+     *
+     * This is useful for observability: logging validation errors, tracking
+     * which tools produce invalid input, and tuning tool names / params /
+     * descriptions to improve LLM usage.
+     *
+     * The callback fires after schema validation fails and before the
+     * validation error is returned to the client. It cannot block or
+     * modify the error path.
+     *
+     * @example
+     * ```ts
+     * const server = new McpServer(
+     *   { name: 'my-server', version: '1.0.0' },
+     *   {
+     *     onInputValidationError: ({ request, toolName, error }) => {
+     *       console.error(`Tool ${toolName} received invalid input: ${error}`);
+     *     }
+     *   }
+     * );
+     * ```
+     */
+    onInputValidationError?: (context: {
+        request: CallToolRequest;
+        toolName: string;
+        error: string;
+    }) => void | Promise<void>;
+}
+
+/**
  * High-level MCP server that provides a simpler API for working with resources, tools, and prompts.
  * For advanced usage (like sending notifications or setting custom request handlers), use the underlying
  * {@linkcode Server} instance available via the {@linkcode McpServer.server | server} property.
@@ -67,9 +102,11 @@ export class McpServer {
     } = {};
     private _registeredTools: { [name: string]: RegisteredTool } = {};
     private _registeredPrompts: { [name: string]: RegisteredPrompt } = {};
+    private _onInputValidationError?: McpServerOptions['onInputValidationError'];
 
-    constructor(serverInfo: Implementation, options?: ServerOptions) {
+    constructor(serverInfo: Implementation, options?: McpServerOptions) {
         this.server = new Server(serverInfo, options);
+        this._onInputValidationError = options?.onInputValidationError;
     }
 
     /**
@@ -156,6 +193,25 @@ export class McpServer {
                 if (error instanceof ProtocolError && error.code === ProtocolErrorCode.UrlElicitationRequired) {
                     throw error; // Return the error to the caller without wrapping in CallToolResult
                 }
+
+                // Fire the onInputValidationError callback for input validation failures
+                if (
+                    this._onInputValidationError &&
+                    error instanceof ProtocolError &&
+                    error.code === ProtocolErrorCode.InvalidParams &&
+                    error.message.startsWith('Input validation error:')
+                ) {
+                    const cbResult = this._onInputValidationError({
+                        request,
+                        toolName: request.params.name,
+                        error: error.message
+                    });
+                    // Await if the callback returns a promise
+                    if (cbResult instanceof Promise) {
+                        await cbResult;
+                    }
+                }
+
                 return this.createToolError(error instanceof Error ? error.message : String(error));
             }
         });

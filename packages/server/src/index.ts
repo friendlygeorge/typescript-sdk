@@ -24,6 +24,7 @@ export type {
     ToolCallback
 } from './server/mcp.js';
 export { McpServer, ResourceTemplate } from './server/mcp.js';
+export type { McpServerOptions } from './server/mcp.js';
 export type { HostHeaderValidationResult } from './server/middleware/hostHeaderValidation.js';
 export { hostHeaderValidationResponse, localhostAllowedHostnames, validateHostHeader } from './server/middleware/hostHeaderValidation.js';
 export type { ServerOptions } from './server/server.js';
